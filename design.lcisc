@@ -1,0 +1,2233 @@
+
+lib_folder porject{
+    path:"sv"
+}
+lib_folder main{
+    path:"lcisc_lib0.1"
+}
+lib_folder compiler{
+    path:"lcisc_compiler0.1"
+}
+
+user_values my_values{
+    path: "sv/my_values.sv",
+    ContextThreadLength:255,
+    DataStorageLength:1024,
+    dataLength:32,
+    threadLength:130
+}
+
+operation keccak_f800{
+    package:"keccak_f800"
+}
+operation Compare{
+    package:"SimpleComparison"
+}
+operation Sub{
+    package:"Subtract"
+}
+operation XorMap{
+    package:"XorMap"
+}
+
+operation Mul_hi{
+    package:"Mul_hi"
+}
+
+operation AndMap{
+    package:"AndMap"
+}
+operation OrMap{
+    package:"OrMap"
+}
+
+
+
+operation Clz{
+    package:"Clz"
+}
+operation PopCount{
+    package:"PopCount"
+}
+operation fnv1aReduce{
+    package:"fnv1aReduce"
+}
+
+operation Add{
+    package:"Adder"
+}
+operation Rot{
+    package: "Rotate"
+}
+operation FnvMap{
+    package:"FnvMap"
+}
+operation fnv1a{
+    package:"fnv1a"
+}
+operation Kiss{
+    package:"Kiss"
+}
+operation src_dest_kiss{
+    package:"src_dest_kiss"
+}
+operation dataIndex{
+    package:"DataIndex"
+}
+operation Sha{
+    package: "Sha"
+}
+operation Mod{
+    package: "Modulo"
+}
+operation Shift{
+    package: "Shift"
+}
+
+operation MulMap{
+    package:"MultiplyMap"
+}
+
+operation DifMap{
+    package:"DifferenceMap"
+}
+operation bswap{
+    package:"bswap"
+}
+operation AccReduce{
+    package:"AccumulateReduce"
+}
+operation ArrSwap{
+    package:"ArraySwap"
+}
+operation ArrInx{
+    package:"ArrayIndex"
+}
+operation ArrRev{
+    package:"ReverseIndex"
+}
+operation Mov{
+    package:"Move"
+}
+operation ConInc{
+    package:"ConditionalIncrement"
+}
+operation AddMap{
+    package:"AdditionMap"
+}
+operation DivApply{
+    package:"DivisionApply"
+}
+
+operation Disp{
+    package:"disposition"
+}
+
+operation Org{
+    package:"orgunit"
+}
+
+pipe_stage pipeStageA{
+    operations : [DivApply,AddMap,ConInc,ArrSwap,AccReduce,DifMap,MulMap,Add,Rot,Shift,
+        OrMap,AndMap,Mul_hi,Clz,PopCount,fnv1aReduce,
+        Compare,Mod,Sha,Sub,XorMap,FnvMap,ArrInx,keccak_f800,Kiss,fnv1a,bswap,ArrRev,src_dest_kiss,dataIndex],
+    path : "sv"
+}
+
+
+dispatch dispatch_main{
+    lib:main,
+    module: "Dispatch",
+    stage:pipeStageA,
+    stage_function_name:"Dispatch_process",
+    inState: "inState",
+    outState:"outState"
+    
+}
+
+
+disposition disposition_main{
+    module: "Disposition",
+    operation: Disp,
+    inState: "inputState"
+}
+
+datainterface datainterface_main{
+    lib:main,
+    path: "DataInterface/DataInterface.sv",
+    module: "DataInterface"
+}
+
+scheduler scheduler_main{
+    module: "Scheduler2"
+}
+
+contextcache contextcache_main{
+    module: "ContextCache"
+}
+
+organizationunit_prog organizationunit_main{
+    module: "OrganizationUnitV2",
+    outState: "execution_ev",
+    operation: Org
+}
+
+
+interface contextcache_scheduler{
+    components: [contextcache_main,scheduler_main],
+    names:  ["waiting_thread_count","waiting_next_id","waiting_next_id2","requesting_thread","requested_thread_id"],
+    connections: [["waiting_thread_count","waiting_next_id","waiting_next_id2","requesting_thread","requested_thread_id"],
+                 ["waiting_thread_count","waiting_next_id","waiting_next_id2","requesting_thread","requested_thread_id"]]
+}
+
+interface datainterface_scheduler{
+    components: [datainterface_main,scheduler_main],
+    names: ["read_back"],
+    connections: [["read_back"],
+                  ["data_return"]]
+}
+
+interface halt_wire{
+    components: [datainterface_main,scheduler_main],
+    names: [halt]
+}
+
+interface org_unit_schedualer{
+    components: [organizationunit_main,scheduler_main],
+    names: [active,"read_return_to_org"],
+    connections:[["active","data_return"],
+                 ["operate","data_deliver"]]
+}
+
+interface contextcache_disposition{
+    components: [contextcache_main,disposition_main],
+    names: ["incoming_thread","incoming_control"],
+    connections: [["incoming_thread","incoming_control"],
+                  ["incoming_thread","incoming_control"]]
+}
+
+interface contextcache_org_unit{
+    components:[contextcache_main,organizationunit_main],
+    names: ["thread_to_org","thread_id_to_org"],
+    connections:[["requested_thread_return","out_thread_id"],
+                 ["thread","thread_id"]]
+}
+
+interface contextcache_user_insert{
+    components:[contextcache_main],
+    names:[user_insert,incoming_user_thread,incoming_user_status,user_insert_id]
+}
+
+interface read_write_controls{
+    components:[datainterface_main,disposition_main],
+    names:["read1","read2","write"]
+}
+
+
+interface clk_rst_wires{
+    components:[datainterface_main,scheduler_main,organizationunit_main,contextcache_main,dispatch_main,disposition_main],
+    names:[clk,rst]
+}
+
+interface pipe_start{
+    components:[organizationunit_main,dispatch_main],
+    names:["pipe_entrance"],
+    connections:[["execution_ev"],["inState"]]
+}
+
+
+
+pipeline all{
+    stages: [organizationunit_main,dispatch_main,pipeStageA,pipeStageA,pipeStageA,pipeStageA,pipeStageA,pipeStageA,pipeStageA,disposition_main],
+    port_names: [clk,rst],
+    wire_names: [clk,rst]
+}
+
+
+program_model l{
+    target_section:all,
+    path:"sv"
+}
+
+global_template g1{
+    32_t write_spot
+}
+
+global_template cache_const{
+    const epoch = 0;
+    const start = 3;
+    const length = 16 ;// 1024/64
+
+    vec_32(16) held_cache_row;
+    
+}
+data_template cache_row {
+    vec_32(16) cache_node;
+}
+
+
+instruction gen_seed(_next_func){
+    import cache_const;
+    64_t next = _next_func;
+    64_t data_row = cache_const.start;
+    32_t hashes = cache_const.epoch;
+    
+    //we have completed the last hash
+    Compare hashes, AeqB, i(0), 1;
+
+    Sha 0;
+    Sub hashes,i(1),hashes;
+    //we need to do more hashes
+    Compare hashes, AgtB, i(1), 2;
+    
+    Disp write = -1, write_address =  data_row, 
+        self_read = 100 ,self_read_address = data_row,
+        sleep = 100,
+        exec_conditional = 1, exec_info = copy, exec_id = next;
+}
+
+instruction start_first_pass_cache(_next){
+    import cache_const;
+    64_t next = _next;
+    64_t data_row = cache_const.start;
+    Sha 32, 1;
+
+    Disp write = 100, write_back = 1,
+    self_read = 100 ,self_read_address = data_row,sleep = 100,
+    exec_conditional = 100, exec_info = copy, exec_id = next;
+}
+
+instruction first_pass_cache(_next){
+    import cache_const;
+    64_t next = _next;
+    64_t data_row = cache_const.start;
+    64_t data_end = cache_const.start + cache_const.length-1;
+
+    Sha 64, 1;
+    Add data_row.32[0], i(1), data_row.32[0];
+    Compare data_row.32[0],AeqB,data_end.32[0],1;
+    Disp self_read = -1 ,self_read_address = data_row,
+         sleep = -1,
+         exec_conditional = 1, exec_info = copy, exec_id = next,
+         write = 100, write_address = data_row;
+}
+
+instruction cache_start(_start,_first_request,_calc_request,_copy_local,_xor_write,_next){
+    import cache_const;
+    64_t next_read;
+    64_t next_action;
+    32_t round_counter = 0;
+    32_t node_index = -1;
+    32_t cache_start = cache_const.start;
+    32_t node_count = cache_const.length;
+    32_t start = _start;
+    32_t first_request = _first_request;
+    32_t calc_request = _calc_request;
+    32_t copy_local =_copy_local;
+    32_t xor_write = _xor_write;
+    32_t next = _next;
+    32_t sixty_four = 64;
+    
+
+
+    //increment
+    Add node_index,i(1),node_index;
+    Compare node_index,AeqB,node_count,1;
+    //if can't increment set the round counter and rest
+    Add round_counter,i(1),round_counter,1;
+    Sub node_index,node_index,node_index,1;
+
+    Compare round_counter,AeqB,i(3),2;
+
+    Add first_request,i(0),next_action.32[0],-2;
+    Add next,i(0),next_action.32[0],2;
+    
+
+
+    Disp 
+    exec_conditional = 100,exec_info=pass,exec_id = next_action;
+}
+
+instruction request_first_cache_node(){
+    import cache_start;
+    import cache_row;
+    import cache_const;
+    Add node_index,a(cache_start),next_read.32[0];
+    Add calc_request,i(0),next_action.32[0];
+    Disp self_read = 100, self_read_address = next_read, sleep = 100,
+    exec_conditional = 100,exec_info=pass,exec_id = next_action;
+} 
+
+//needs the node[i] read
+instruction calc_and_request_parent(){
+    import cache_start;
+    import cache_row;
+    import cache_const;
+
+    Mod cache_node [0] , node_count , next_read.32[0];
+    Add next_read.32[0],cache_start, next_read.32[0];
+    Add copy_local,i(0),next_action.32[0];
+    
+    Disp self_read = 100, self_read_address = next_read, sleep = 100,
+    exec_conditional = 100,exec_info=pass,exec_id = next_action;
+}
+
+instruction copy_to_local_request_partner(){
+    import cache_start;
+    import cache_row;
+    import cache_const;
+
+    ArrSwap held_cache_row,cache_node,16;
+    Sub node_count,i(1),next_read.32[0];
+    Add next_read.32[0],node_index,next_read.32[0];
+    Mod next_read.32[0],node_count,next_read.32[0];
+    Add next_read.32[0],cache_start,next_read.32[0];
+    Add cache_start.xor_write,i(0),next_action.32[0];
+
+    Disp self_read = 100, self_read_address = next_read, sleep = 100,
+    exec_conditional = 100,exec_info=pass,exec_id = next_action;
+}
+
+instruction Xor_and_hash(){
+    import cache_start;
+    import cache_row;
+    import cache_const;
+
+    //calc write the row
+    XorMap cache_node,held_cache_row,16;
+    Sha 64,1;
+    Add node_index,a(cache_start),next_read.32[0];
+    Add cache_start.start,i(0),next_action.32[0];
+    
+    Disp
+        write = 100, write_address = next_read,
+        exec_conditional = 100,exec_info=pass,exec_id = next_action;        
+}
+
+global_template dag_consts{
+    const start = 20;
+    const length = 32; //16*32
+    const total_parents = 8;//256
+    32_t working_row;
+
+
+    32_t temp1;
+    32_t temp2;
+}
+
+//for loop over the dag rows
+//for each row launch a process that gets a read row to start
+
+instruction loop_for_dag(_create_item_function){
+    import dag_consts;
+    64_t next_read;
+    64_t next_action = _create_item_function;
+    32_t index = 0;
+    32_t dag_start = dag_consts.start;
+    32_t end_index = dag_consts.length;
+    //set a read address
+    Add a(dag_start),a(index), next_read.32[0];
+    Add a(index), i(1), index;
+    Compare a(index),AltB,a(end_index),1;
+
+    Disp fork_conditional = 1, fork_info = fork_me_copy, fork_sleep = -100,
+        exec_conditional = 100,exec_info=copy, exec_id = next_action,
+        self_read = 100, sleep = 100, self_read_address = next_read;
+        
+}
+
+
+//is given a read row
+instruction create_dag_item(_pre_loop,_calc_parent,_mix_row,_final_write){
+    import dag_consts;
+    import cache_const;
+    64_t next_read;
+    64_t next_action;
+    32_t dag_index;
+    32_t dag_start = dag_consts.start;
+    32_t cache_start = cache_const.start;
+    32_t cache_length = cache_const.length;
+    32_t parent = 0;
+    32_t max_parents = dag_consts.total_parents;
+    32_t pre_loop = _pre_loop;
+    32_t calc_parent = _calc_parent;
+    32_t mix_row = _mix_row;
+    32_t final_write = _final_write;
+    vec_32(16) local_dag_row;
+
+
+
+    Org next_read, address;
+    Add next_read.32[0], i(0), working_row;//print row id for show
+
+    //caclulate the first row of the cache we need
+    Sub next_read.32[0],dag_start,dag_index;
+    Mod dag_index,cache_length,next_read.32[0];
+    Add next_read.32[0],cache_start, next_read.32[0];
+
+    //goto next step
+    Add pre_loop,i(0),next_action.32[0];
+
+    Disp    self_read = 100,sleep = 100, self_read_address = next_read,
+        exec_conditional=100,exec_info=pass,exec_id = next_action;
+}
+
+instruction start_parent_loop(){
+    import create_dag_item;
+    import dag_consts;
+    import cache_const;
+    import cache_row;
+
+    //do the inital hash
+    XorMap cache_row.cache_node,dag_index,1;
+    Sha 64,1;
+    //move it to local
+    ArrSwap local_dag_row,cache_row.cache_node,16;
+    //goto caclulate parent
+    Add calc_parent,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100,exec_info = pass,exec_id = next_action;
+
+}
+
+instruction caclulate_parent(){
+    import create_dag_item;
+    import dag_consts;
+
+    //parent index = fnv(dag_index^parent,local_dag_row[parent%16])
+    Add dag_index,i(0),temp1;
+    XorMap temp1,parent,1;
+    Mod parent,i(16),temp2;
+    ArrInx local_dag_row,temp2,temp2;
+    FnvMap temp1,temp2,1;
+    Mod temp1,cache_length,temp1;
+    //transform the index into a reading address
+    Add temp1,cache_start,next_read.32[0];
+    Add mix_row,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100,exec_info = pass,exec_id = next_action, self_read = 100, sleep=100, self_read_address = next_read;
+
+}
+//we have just read the cache row now mix and see if done
+instruction mix_parent(){
+    import create_dag_item;
+    import dag_consts;
+    import cache_row;
+
+    FnvMap local_dag_row,cache_row.cache_node,16;
+
+    //increment parent
+    Add parent,i(1),parent;
+
+    Compare parent,AeqB,max_parents,1;
+    Add calc_parent,i(0),next_action.32[0],-1;
+    Add final_write,i(0),next_action.32[0],1;
+
+    Disp exec_conditional = 100,exec_info = pass,exec_id = next_action
+
+}
+
+instruction write_back_dag_item(){
+    import create_dag_item;
+    import dag_consts;
+    import cache_row;
+    ArrSwap local_dag_row,cache_row.cache_node,16;
+    Sha 64,1;
+
+
+    Add dag_index,dag_start,next_read.32[0];
+
+    Disp delete = 100, write = 100, write_address = next_read;
+
+}
+
+
+
+
+
+
+
+
+//progpow steps
+
+global_template progpow_global{
+    const data_rows = 32; //32
+    const PROGPOW_LANES = 16;
+
+    const PROGPOW_CNT_CACHE = 2;
+    const PROGPOW_CNT_MATH = 4; //loop count for math loop
+    const PROGPOW_CNT_DAG = 4;
+    const PROGPOW_REGS = 32;
+
+
+
+    vec_32(8) header;
+    64_t nonce;
+    64_t current_data_address;
+    64_t prog_seed;
+    32_t dag_words;
+    32_t dag_address;
+}
+
+instruction initalize_progpow_global(_next){
+    import progpow_global;
+    import dag_consts;
+    vec_32(8) inital_data = [1,2,3,4,5,6,7,8];
+    64_t nonce = 15;
+    64_t current_data_address = dag_consts.start + dag_consts.length + 2;
+    64_t prog_seed = 111/50;
+    32_t dag_words = dag_consts.length * 16; 
+    32_t dag_address = dag_consts.start;
+    const data_length = 16;
+
+    64_t next = _next;
+    
+
+    ArrSwap inital_data,header,data_length;
+
+    Disp exec_conditional=100,exec_info = copy, exec_id = next;
+}
+
+data_template prog_pow_header_info{
+    64_t nonce;
+    64_t seed;
+    64_t data_address;
+    32_t dag_addr_base;
+    32_t loop;
+
+    vec_32(4) dst_val;
+    vec_32(4) prog_rnd;
+    vec_32(8) result;
+}
+
+//seting up the progpow object and stucture
+//alocate space in memory
+//increment the nonce
+//creating the seed
+instruction allocate_memory_progpow_setup(_next){
+    import progpow_global;
+    import prog_pow_header_info;
+    64_t next_action = _next;
+    32_t mem_aloc_size;
+
+    //increment the  (neex to make some 64_bit operators)
+    Add current_data_address.32[0],mem_aloc_size,current_data_address.32[0];
+    Sub current_data_address.32[0],mem_aloc_size,data_address.32[0];
+    Sub i(0), i(1), prog_pow_header_info.loop;
+
+    Disp exec_conditional = 100, exec_info = copy, exec_id = next_action,
+        self_read = 100,sleep = 100, self_read_address = data_address,
+        write = 100, write_address = data_address;
+}
+instruction make_prog_hash_seed(_next){
+    import progpow_global;
+    import prog_pow_header_info;
+    64_t next_action = _next; 
+
+    vec_32(8) fake_digest;
+    //increment the seed
+    Add progpow_global.nonce.32[0],i(1),progpow_global.nonce.32[0];
+    Sub progpow_global.nonce.32[0],i(1),progpow_global.nonce.32[0];
+    keccak_f800 header,progpow_global.nonce,fake_digest;
+
+    //copy over the seed and nonce
+    ArrSwap header,seed.32[0], 2;
+    bswap seed.32[0],2;
+    ArrSwap seed.32[0],seed.32[1],1;//32 bit rotate
+    ArrSwap progpow_global.nonce.32[0],prog_pow_header_info.nonce.32[0],2;
+
+    Disp exec_conditional = 100, exec_info = copy, exec_id = next_action,
+        self_read = 100,sleep = 100, self_read_address = data_address,
+        write = 100, write_address = data_address;
+
+
+}
+
+data_template prog_pow_mix_row{
+    vec_32(32) row;
+}
+
+
+//fill mix 
+//given a read of the first mix
+instruction fill_mix(_iterator,_calc_kiss,_write_step,_exit,_next){
+    import prog_pow_header_info;
+    64_t next_action = _iterator;
+    64_t header_row;
+    32_t lane_id = -1;
+    32_t max_lanes = 16;
+    32_t row_index = 0;
+    32_t max_rows = 32;
+    32_t calc_kiss = _calc_kiss;
+    32_t wirte_step = _write_step;
+    vec_32(4) kiss_values = [2166136261]; // 0x811c9c5
+    64_t seed;
+    64_t address_start;
+
+    32_t exit = _exit;
+    32_t next = _next;
+
+    //capture header row
+    Org header_row,address;
+
+    //get local copies of seed and data addess
+    ArrSwap prog_pow_header_info.seed.32[0], fill_mix.seed.32[0],2;
+    
+    ArrSwap data_address.32[0], address_start.32[0],2;
+
+
+    
+
+
+
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+instruction fill_mix_iterator(){
+    import fill_mix;
+
+    //increment the lane id
+    Add lane_id,i(1),lane_id;
+    Add address_start.32[0], i(1), address_start.32[0]; 
+    //if we are still going
+    Compare lane_id, AltB, max_lanes,1; 
+
+    //set next step
+    Add calc_kiss,i(0),next_action.32[0];
+
+    //fill some stuff for kiss setup
+    Add lane_id,i(0),kiss_values [2];
+    Add lane_id,i(0),kiss_values [3];
+
+    //run an exit function
+    Add exit,i(0),next_action.32[0],-1;
+
+
+
+    Disp exec_conditional = 100, 
+        fork_conditional = 1, fork_info=fork_me_copy, fork_sleep = -100,
+        exec_info = pass, exec_id = next_action;
+}
+
+instruction fill_mix_exit(){
+    import fill_mix;
+
+
+    Add next,i(0),next_action.32[0];
+
+    Disp 
+        self_read = 100,sleep = 100,self_read_address = header_row,
+        exec_conditional = 100, exec_info = copy, exec_id = next_action; 
+}
+
+//setup the kiss values
+instruction fill_mix_setup(){
+    import fill_mix;
+
+    fnv1a kiss_values [0],seed.32[0];
+
+    Add kiss_values [0],i(0),kiss_values [1];
+    fnv1a kiss_values [1],seed.32[1];
+
+    fnv1a kiss_values [2],kiss_values [1];
+    fnv1a kiss_values [3],kiss_values [2];
+
+    //go to writting
+    Add wirte_step,i(0),next_action.32[0];
+    
+
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+//fill two rows
+instruction fill_mix_write(){
+    import fill_mix;
+    import prog_pow_mix_row;
+
+
+    Add address_start.32[0],i(1),address_start.32[0],2;
+    //create the row
+    Kiss kiss_values,prog_pow_mix_row.row,32;
+
+
+    Disp delete = 100, write = 100, write_address = address_start;
+}
+
+
+//prog_pow_loops
+
+//launch a read off the shared data
+instruction prog_pow_temp_start(_next){
+    import progpow_global;
+    64_t next_action = _next;
+    64_t next_read;
+
+    Add i(0),next_action.32[0],next_action.32[0];
+    ArrSwap current_data_address.32[0],next_read.32[0],2;
+
+
+    Disp exec_conditional = 100,exec_info=copy,exec_id = next_action,
+        self_read = 100,sleep = 100,self_read_address = next_read;
+
+
+
+}
+
+
+//have it read the header info
+instruction prog_pow_loop_setup(_recive_step,_record_step,_next,_exit,_exit_next){
+    import prog_pow_header_info;
+    import progpow_global;
+    import dag_consts;
+    64_t header_row;
+    64_t next_read;
+    64_t next_action = _recive_step;
+    32_t dag_modulus = PROGPOW_LANES;
+    32_t record_step = _record_step;
+    32_t next = _next;
+    32_t dag_addr_base;
+    32_t dat_addr_base_mod = dag_consts.length / 4;
+    32_t exit_loop_num = progpow_global.PROGPOW_CNT_DAG;
+
+    32_t exit = _exit;
+    32_t exit_next = _exit_next;
+
+
+    Org header_row, address; 
+    Add loop,i(1),loop;
+
+    Compare loop,AeqB,exit_loop_num,1;
+    Add exit,i(0),next_action.32[0],1; 
+
+    //find the row for the dag addr base
+    Add loop,i(0),next_read.32[0];
+    Mod next_read.32[0],dag_modulus ,next_read.32[0];
+    Add next_read.32[0],header_row.32[0],next_read.32[0];
+    Add next_read.32[0], i(1), next_read.32[0];
+
+    Disp exec_conditional = 100,exec_info=pass,exec_id = next_action,
+        write = -1, write_address = header_row,
+        self_read = -1,sleep = -1,self_read_address = next_read;
+
+
+}
+
+instruction prog_pow_loop_complete(){
+    import prog_pow_loop_setup;
+    Add exit_next,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100,exec_info=copy,exec_id = next_action,
+         self_read = 100,sleep = 100,self_read_address = header_row;
+}
+
+instruction mark_dag_entry_base(){
+    import prog_pow_loop_setup;
+    import prog_pow_mix_row;
+
+    Add prog_pow_mix_row.row [0], i(0),prog_pow_loop_setup.dag_addr_base;
+    Mod prog_pow_loop_setup.dag_addr_base,dat_addr_base_mod,prog_pow_loop_setup.dag_addr_base;
+
+    Add record_step,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100,exec_info=pass,exec_id = next_action,
+        self_read = 100,sleep = 100,self_read_address = header_row;
+}
+
+
+
+
+
+instruction mark_dag_entry_end(){
+    import prog_pow_loop_setup;
+    import prog_pow_header_info;
+
+    Add prog_pow_loop_setup.dag_addr_base,i(0),prog_pow_header_info.dag_addr_base;
+    Add next,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100,exec_info=copy,exec_id = next_action,
+        write = 100, write_address = header_row,
+        self_read = 100,sleep = 100,self_read_address = header_row;
+}
+
+//begins with a read of the header info
+instruction build_dag_entry(_l_loop,_calc_addr_lane,_i_loop,_read_dag,_write_entry,_exit,_next){
+    import prog_pow_header_info;
+    64_t header_row;
+    64_t next_action;
+    64_t next_read;
+    
+    32_t i_loop_var = 0;
+    32_t l_loop_var = 0;
+    32_t dag_entry_start;
+    32_t dag_addr_base;
+    32_t loop;
+    32_t dag_addr_lane;
+
+    32_t l_loop = _l_loop;
+    32_t calc_addr_lane = _calc_addr_lane;
+    32_t i_loop = _i_loop;
+    
+    
+    32_t index = 0;
+    32_t read_dag = _read_dag;
+    32_t write_entry = _write_entry;
+    32_t sixteen = 16;
+    32_t four = 4;
+
+    32_t writing_index;
+    32_t dag_word;
+
+    32_t exit = _exit;
+    32_t next = _next;
+
+    Org header_row,address; 
+    Add header_row.32[0], i(17), dag_entry_start;
+    Add prog_pow_header_info.loop,i(0),build_dag_entry.loop;
+    Add prog_pow_header_info.dag_addr_base,i(0),build_dag_entry.dag_addr_base;
+
+    
+
+    MulMap build_dag_entry.dag_addr_base,sixteen,1;
+
+    Add l_loop,i(0),next_action.32[0];
+    
+
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+
+
+
+
+instruction dag_entry_l_loop(){
+    import build_dag_entry;
+
+    
+    Compare l_loop_var, AeqB, i(16),1;
+
+    //go to calc dag addr lane
+    Add calc_addr_lane,i(0),next_action.32[0];
+
+    //exit path
+    Add exit,   i(0),   next_action.32[0],1;
+
+    //reset i_loop_var
+    Sub i_loop_var,i_loop_var,i_loop_var;
+    
+    Disp
+        
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+
+}
+
+
+
+instruction calc_addr_lane(){
+    import build_dag_entry;
+
+    Add loop, i(0),dag_addr_lane;
+    XorMap dag_addr_lane, l_loop_var,1;
+    Mod dag_addr_lane,i(16),dag_addr_lane;
+    Add dag_addr_base,dag_addr_lane,dag_addr_lane;
+    MulMap dag_addr_lane,four,1;
+
+    Add i_loop,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+}
+
+
+instruction dag_entry_i_loop(){
+    import build_dag_entry;
+    import progpow_global;
+    Compare i_loop_var, AeqB, i(4),1;
+    
+    Add dag_addr_lane, i_loop_var, index; 
+
+    dataIndex index,index,next_read,16;
+
+    //shit to line up with dag
+    Add dag_address,next_read.32[0],next_read.32[0];
+
+    //set the read function
+    Add read_dag,i(0),next_action.32[0];
+
+    //go to l loop if done
+    Add l_loop,i(0),next_action.32[0],1;
+    Add l_loop_var,i(1),l_loop_var,1;
+    
+
+    Disp
+        self_read = -1, sleep = -1, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+
+}
+instruction dag_entry_read_dag_word(){
+    import progpow_global;
+    import cache_row;
+    import build_dag_entry;
+
+    //get our word
+    ArrInx cache_row.cache_node, index, dag_word;
+
+    //find the spot to put the data
+    dataIndex writing_index,index,next_read,16;
+    Add next_read.32[0],build_dag_entry.dag_entry_start,next_read.32[0];
+    Add writing_index,i(1),writing_index;
+
+    //set next next_action  
+    Add write_entry,i(0),next_action.32[0];
+
+    Disp
+        self_read = 100, sleep = 100, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+
+}
+instruction dag_entry_write_dag_word(){
+    import cache_row;
+    import build_dag_entry;
+
+    //swap word
+    bswap dag_word,1;
+
+    //set the word
+    ArrRev cache_row.cache_node, index, dag_word;
+    
+
+    //go back to i_loop
+    Add i_loop,i(0),next_action.32[0];
+    Add i_loop_var,i(1),i_loop_var;
+
+
+    Disp write=100,write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+    
+
+}
+
+instruction dag_entry_exit(){
+
+    import build_dag_entry;
+    //exit path
+    Add next,   i(0),   next_action.32[0];
+
+    Disp
+        self_read = 100, self_read_address = header_row, sleep = 100,
+        exec_conditional = 100, exec_info = copy, exec_id = next_action; 
+}
+
+
+
+instruction prog_pow_loop(_setup_src_arr,_fill_src_arr,
+                        _i_loop,
+                        _cache_step, _cache_step_setup, _cache_step_l_loop, _cache_step_l_loop_merge,  _merge_base,
+                        _math_setup, _math_sel_kiss,    _math_step_l_loop,  _math_step_l_loop_merge,   _math_base, 
+                        _exit,_next){
+    import progpow_global;
+    64_t next_action = _setup_src_arr;
+    32_t exit = _exit;
+    32_t next = _next;
+    64_t jump_back = 0;
+    64_t next_read = 0;
+    64_t header_row = 0;
+    64_t mix;
+    32_t temp = 0;
+    32_t temp2 = 0;
+    //src_dest stuff
+    vec_32(32) dst;
+    vec_32(32) src;
+    vec_32(4) kiss_values = [2166136261]; // 0x811c9c5;
+    32_t setup_src_arr = _setup_src_arr;
+    32_t fill_src_arr = _fill_src_arr;
+    32_t src_idx = 0;
+    32_t dst_idx = 0;
+    //l loop
+    32_t l_loop_var;
+    //i_loop
+    32_t i_loop = _i_loop;
+    32_t i_loop_var = -1;
+    32_t i_end = progpow_global.PROGPOW_CNT_MATH;
+    32_t src_value;
+    32_t dst_value;
+    //cache_step
+    32_t cache_step = _cache_step;
+    32_t cache_step_setup = _cache_step_setup;
+    32_t cache_step_l_loop = _cache_step_l_loop;
+    32_t cache_step_l_loop_merge = _cache_step_l_loop_merge;
+    32_t sel;
+    
+    32_t merge_base = _merge_base;
+    32_t merge_const = 33;
+
+    //math step
+    32_t math_setup = _math_setup;
+    32_t math_sel_kiss = _math_sel_kiss;
+    32_t math_step_l_loop = _math_step_l_loop;
+    32_t math_step_l_loop_merge = _math_step_l_loop_merge;
+    32_t math_base = _math_base;
+    32_t math_src_rnd_mod = progpow_global.PROGPOW_REGS * ( progpow_global.PROGPOW_REGS - 1);
+    32_t math_prog_pow_reg = progpow_global.PROGPOW_REGS;
+    32_t math_sel;
+    32_t src1;
+    32_t src2;
+
+    //next
+    
+    
+    Org header_row, address;
+    Add header_row.32[0], i(1),mix.32[0];
+
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+//
+instruction setup_src_dst_arrs(){
+    import prog_pow_loop;
+    import progpow_global;
+
+    fnv1a kiss_values [0],progpow_global.prog_seed.32[0];
+
+    Add kiss_values [0],i(0),kiss_values [1];
+    fnv1a kiss_values [1],progpow_global.prog_seed.32[1];
+    ArrSwap kiss_values [2], progpow_global.prog_seed.32[0],2;
+    fnv1a kiss_values [2],kiss_values [1];
+    fnv1a kiss_values [3],kiss_values [2];
+    Add fill_src_arr,i(0),next_action.32[0];
+
+    Disp exec_conditional = 100, exec_info=pass ,exec_id = next_action;
+}
+
+instruction fill_src_dst(){
+    import prog_pow_loop;
+
+    src_dest_kiss kiss_values,src,dst;
+    Add i_loop,i(0),next_action.32[0];
+    Disp exec_conditional = 100, exec_info=pass ,exec_id = next_action;
+}
+
+
+
+instruction prog_pow_i_loop(){
+    import prog_pow_loop;
+
+
+
+    Add i_loop_var,i(1),i_loop_var;
+    Compare i_loop_var,AeqB,i_end,1;//if we are to exit
+
+    Add cache_step,i(0),next_action.32[0],-1;
+
+    Add exit,      i(0),next_action.32[0],1;
+
+    Disp
+        self_read = 1, sleep = 1, self_read_address = header_row, 
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+
+  
+}
+
+instruction prog_pow_exit(){
+    import prog_pow_loop;
+    import prog_pow_header_info;
+    //exit path
+    Add next,   i(0),   next_action.32[0];
+
+    ArrInx dst,dst_idx,prog_pow_header_info.dst_val [1] ,32;
+    Add dst_idx,i(1),dst_idx;
+    ArrInx dst,dst_idx,prog_pow_header_info.dst_val [2] ,32;
+    Add dst_idx,i(1),dst_idx;
+    ArrInx dst,dst_idx,prog_pow_header_info.dst_val [3] ,32;
+    Add i(0),i(0),prog_pow_header_info.dst_val [0]; 
+    ArrSwap kiss_values,prog_rnd,4;
+
+    Disp
+        write = 100, write_address = header_row,
+        self_read = 100, sleep = 100, self_read_address = header_row, 
+        exec_conditional = 100, exec_info = copy, exec_id = next_action; 
+}
+
+instruction prog_pow_cache_step(){
+    import prog_pow_loop;
+    import progpow_global;
+
+    //if we need to execute this
+    Compare i_loop_var, AltB, i(PROGPOW_CNT_CACHE),1;
+    //skip over goto math loop
+    Add math_setup,i(0),next_action.32[0],-1;
+    //enter the loop
+    Add cache_step_setup,i(0),next_action.32[0],1;
+    
+    //reset the loop var
+    Sub l_loop_var,l_loop_var,l_loop_var;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+
+instruction prog_pow_cache_step_setup(){
+    import prog_pow_loop;
+    //get values
+    ArrInx src,src_idx,src_value,32;
+    ArrInx dst,dst_idx,dst_value,32;
+    //increment
+    Add src_idx,i(1),src_idx;
+    Add dst_idx,i(1),dst_idx;
+    //get the sel value
+    Kiss kiss_values,sel,1; 
+
+    Add cache_step_l_loop,i(0),next_action.32[0];
+    //read the first mix row
+    Disp 
+        self_read  = 100,sleep = 100, self_read_address = mix,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+//reading the mix
+instruction prog_pow_cache_l_loop(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+    import progpow_global;
+    
+    //find the dag offest
+    ArrInx prog_pow_mix_row.row,src_value,temp2;
+    Mod temp2,dag_words,temp2;
+    dataIndex temp2,temp2,next_read,16;
+
+    Add next_read.32[0],progpow_global.dag_address, next_read.32[0];
+    Compare l_loop_var, AeqB, i(PROGPOW_LANES),1;
+
+    //go a dag read
+    Add cache_step_l_loop_merge,i(0),next_action.32[0];
+
+    Add math_setup,i(0),next_action.32[0],1;
+    //if done goto the math loop
+
+    Disp 
+        self_read = -1,sleep = -1, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+//reading dag
+instruction prog_pow_cache_l_merge(){
+    import prog_pow_loop;
+    import cache_row;
+
+    ArrInx cache_node,temp2,temp2;//temp2 is for second value
+    bswap temp2,1;
+    Mod sel,i(4),temp;
+
+    //set the merge function
+    Add merge_base,temp,next_action.32[0];
+
+    Add cache_step_l_loop,i(0),jump_back.32[0];
+
+    //set the reading target to the mix
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    Add l_loop_var,i(1),l_loop_var;
+
+    Disp 
+        self_read = 100,sleep = 100, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+//reading correct mix row
+instruction merge_0(){
+    import prog_pow_loop;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    //a*33+b
+    MulMap temp,merge_const,1;
+    Add temp,temp2,temp;
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+    //read back mix row
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    
+    Disp
+        sleep = 100,self_read = 100,self_read_address = next_read,
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+instruction merge_1(){
+    import prog_pow_loop;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    //(a^b)*33
+    XorMap temp,temp2,1;
+    MulMap temp,merge_const,1;
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+    //read back mix row
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    
+    Disp
+        sleep = 100,self_read = 100,self_read_address = next_read,
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+
+instruction merge_2(){
+    import prog_pow_loop;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    // rotleft a (sel >> 16)%31+1 xor b
+    
+    Shift sel,i(16),next_read.32[0],0;
+    Mod next_read.32[0],i(31),next_read.32[0];
+    Add next_read.32[0],i(1),next_read.32[0];
+    Rot temp,next_read.32[0],temp,1;
+    XorMap temp,temp2,1;
+
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+    //read back mix row
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    
+    Disp
+        sleep = 100,self_read = 100,self_read_address = next_read,
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+instruction merge_3(){
+    import prog_pow_loop;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    // rotleft a (sel >> 16)%31+1 xor b
+    
+    Shift sel,i(16),next_read.32[0],0;
+    Mod next_read.32[0],i(31),next_read.32[0];
+    Add next_read.32[0],i(1),next_read.32[0];
+     Rot temp,next_read.32[0],temp,0;
+    XorMap temp,temp2,1;
+
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+    //read back mix row
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    
+    Disp
+        sleep = 100,self_read = 100,self_read_address = next_read,
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+
+//math loop
+
+
+/* not needed as this is alway true
+instruction prog_pow_math_step(){
+    import prog_pow_loop;
+
+    //if we need to execute this
+    Compare i_loop_var, AltB, i(20),1;
+    //skip over
+    Add i_loop,i(0),next_action.32[0],-1;
+    //enter the loop
+    Add math_setup,i(0),next_action.32[0],1;
+    
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+*/
+
+
+instruction prog_pow_math_step_setup(){
+    import prog_pow_loop;
+    //get det value
+    ArrInx dst,dst_idx,dst_value,32;
+    //increment
+    Add dst_idx,i(1),dst_idx;
+    //get the sel value
+    Kiss kiss_values,src2,1; 
+    Mod src2,math_src_rnd_mod,src2;
+    Mod src2,math_prog_pow_reg,src1; // set src1
+    DivApply src2,math_prog_pow_reg,src2; //set src2
+
+    Add math_sel_kiss,i(0),next_action.32[0];
+    Disp 
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+instruction porg_pow_math_set_sel(){
+    import prog_pow_loop;
+    Kiss kiss_values,math_sel,1;
+    //find sel1
+    Kiss kiss_values,sel,1;
+    Add math_step_l_loop,i(0),next_action.32[0];
+    //reset the loop var
+    Sub l_loop_var,l_loop_var,l_loop_var;
+    //
+    Compare src2, AgteqB, src1,1;
+    Add src2 ,i(1),src2,1;
+
+    Disp 
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+instruction prog_pow_math_l_loop(){
+
+    import prog_pow_loop;
+    import progpow_global;
+    
+
+
+
+
+    //set math_function
+    Mod math_sel,i(11),temp;
+    Add math_base,temp,next_action.32[0];
+    //set jump back
+    Add math_step_l_loop_merge,i(0),jump_back.32[0];
+
+    Compare l_loop_var, AeqB, i(PROGPOW_LANES),1;//got to i loop
+
+    //set tp read the mix lane
+    Add mix.32[0],l_loop_var,next_read.32[0];
+
+    //if exit go back to i_loop
+    Add i_loop,i(0),next_action.32[0],1;
+
+    Disp 
+        self_read = -1,sleep = -1, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+}
+
+//math function put result into temp2
+
+instruction math_0(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+
+    Add temp,temp2,temp2;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+instruction math_1(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+
+    MulMap temp2,temp,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+instruction math_2(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+
+    Mul_hi temp2,temp,temp2;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+instruction math_3(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+
+    //min
+    Compare temp, AltB, temp2,1;
+    ArrSwap temp,temp2,1,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}  
+
+
+instruction math_4(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    //rot left
+    Rot temp,temp2,temp2,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+instruction math_5(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    //rot right
+    Rot temp,temp2,temp2,0;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+
+instruction math_6(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    
+    AndMap temp2,temp,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+
+instruction math_7(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    
+    OrMap temp2,temp,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+
+instruction math_8(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    
+    XorMap temp2,temp,1;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+instruction math_9(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    
+    Clz temp2,1;
+    Clz temp,1;
+    Add temp2,temp,temp2;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+instruction math_10(){
+    import prog_pow_mix_row;
+    import prog_pow_loop;
+
+    //find a and b
+    ArrInx prog_pow_mix_row.row,src1,temp;
+    ArrInx prog_pow_mix_row.row,src2,temp2;
+    
+    PopCount temp2,1;
+    PopCount temp,1;
+    Add temp2,temp,temp2;
+    
+    Disp exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+} 
+
+
+
+//not reading anything
+instruction prog_pow_math_l_merge(){
+    import prog_pow_loop;
+    import cache_row;
+
+
+
+    Mod sel,i(4),temp;
+
+    //set the merge function
+    Add merge_base,temp,next_action.32[0];
+
+    Add math_step_l_loop,i(0),jump_back.32[0];
+
+    //set the reading target to the mix
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    Add l_loop_var,i(1),l_loop_var;
+
+    Disp 
+        self_read = 100,sleep = 100, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+
+//dag merging
+
+
+instruction prog_pow_dag_merging(_i_loop,_l_loop,_calc_index,_read_dag,_merge_base,_exit,_next){
+    import prog_pow_header_info;
+    64_t next_action =_i_loop ;
+    64_t next_read;
+    64_t header_row;
+    64_t jump_back = _l_loop;
+    vec_32(4) kiss_values;
+    vec_32(4) dst_val_arr;
+    32_t dst_value;
+    32_t i_loop_var;
+    32_t l_loop_var;
+
+    32_t header_dag_entry;
+
+    32_t sel;
+    32_t temp;
+    32_t temp2;
+
+    32_t i_loop = _i_loop;
+    32_t l_loop = _l_loop;
+    32_t calc_index = _calc_index;
+    32_t read_dag = _read_dag;
+    32_t merge_base = _merge_base;
+    32_t exit = _exit;
+    32_t next = _next;
+    32_t index;
+    32_t four = 4;
+    32_t merge_const = 33;
+
+    Org header_row, address;
+    ArrSwap prog_rnd [0] , kiss_values [0] ,4;
+    ArrSwap dst_val [0] , dst_val_arr [0] ,4;
+    Add header_row.32[0],i(17),header_dag_entry;
+
+
+    Disp
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+}
+
+
+
+instruction dag_merging_i_loop(){
+    import prog_pow_dag_merging;
+
+    Compare i_loop_var, AeqB, i(4),1;
+
+    //go to calc dag addr lane
+    Add l_loop,i(0),next_action.32[0];
+
+    //save the dst value 
+    ArrInx prog_pow_dag_merging.dst_val_arr , i_loop_var, dst_value;
+
+    //exit path
+    Add exit,   i(0),   next_action.32[0],1;
+
+    //reset l_loop_var
+    Sub l_loop_var,l_loop_var,l_loop_var;
+    Kiss prog_pow_dag_merging.kiss_values ,sel,1;
+
+    Disp
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+
+}
+
+instruction dag_merging_exit(){
+    import prog_pow_dag_merging;
+    import prog_pow_header_info;
+    //exit path
+    Add next,   i(0),   next_action.32[0];
+
+    Disp
+        self_read = 100, sleep = 100, self_read_address = header_row, 
+        exec_conditional = 100, exec_info = copy, exec_id = next_action; 
+}
+
+
+instruction dag_merging_l_loop(){
+    import prog_pow_dag_merging;
+    import progpow_global;
+    Compare l_loop_var , AeqB, i(16),1;
+    
+    //goto calc index
+    Add calc_index,i(0),next_action.32[0];
+
+    //go to i loop if done
+    Add i_loop,i(0),next_action.32[0],1;
+    Add i_loop_var,i(1),i_loop_var,1;
+    
+    Disp
+        self_read = -1, sleep = -1, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+
+}
+
+
+instruction dag_merging_calc_index(){
+    import prog_pow_dag_merging;
+    //get index
+    Add i(0),l_loop_var,index;
+    MulMap index,four,1;
+    Add index,i_loop_var,index;
+    dataIndex index,index,next_read,16;
+
+    //Shift to line up with header entry
+    Add header_dag_entry,next_read.32[0],next_read.32[0];
+
+    //set the read function
+    Add read_dag,i(0),next_action.32[0];
+
+    Disp self_read = 100, sleep = 100, self_read_address = next_read,
+    exec_conditional = 100, exec_info = pass, exec_id = next_action; 
+}
+
+
+//reading dag entry
+instruction dag_merging_read_word(){
+    import prog_pow_dag_merging;
+    import cache_row;
+
+    //get value
+    ArrInx cache_node,index,temp2;
+
+    Mod sel,i(4),temp;
+
+    //set the merge function
+    Add merge_base,temp,next_action.32[0];
+
+    //set the read value
+    Add header_row.32[0],i(1),next_read.32[0]; 
+    Add next_read.32[0],l_loop_var,next_read.32[0]; 
+
+    //increment l_loo
+    Add l_loop_var,i(1),l_loop_var;
+    
+
+    Disp
+        self_read = 100,sleep = 100, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+
+
+//reading correct mix row
+instruction dag_merge_0(){
+    import prog_pow_dag_merging;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    //a*33+b
+    MulMap temp,merge_const,1;
+    Add temp,temp2,temp;
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+   
+    
+    Disp
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+instruction dag_merge_1(){
+    import prog_pow_dag_merging;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    //(a^b)*33
+    XorMap temp,temp2,1;
+    MulMap temp,merge_const,1;
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+  
+    
+    Disp
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+
+instruction dag_merge_2(){
+    import prog_pow_dag_merging;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    // rotleft a (sel >> 16)%31+1 xor b
+    
+    Shift sel,i(16),next_read.32[0],0;
+    Mod next_read.32[0],i(31),next_read.32[0];
+    Add next_read.32[0],i(1),next_read.32[0];
+    Rot temp,next_read.32[0],temp,1;
+    XorMap temp,temp2,1;
+
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+   
+    
+    Disp
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+instruction dag_merge_3(){
+    import prog_pow_dag_merging;
+    import prog_pow_mix_row;
+    ArrInx prog_pow_mix_row.row,dst_value,temp; //get the value from the mix
+    // rotleft a (sel >> 16)%31+1 xor b
+    
+    Shift sel,i(16),next_read.32[0],0;
+    Mod next_read.32[0],i(31),next_read.32[0];
+    Add next_read.32[0],i(1),next_read.32[0];
+     Rot temp,next_read.32[0],temp,0;
+    XorMap temp,temp2,1;
+
+    ArrRev prog_pow_mix_row.row,dst_value,temp;//put the value back
+
+   
+
+    
+    Disp
+        write = 100, write_back = 1,
+        exec_conditional = 100, exec_info = pass, exec_id = jump_back;
+}
+
+
+instruction digest_step(_digest_lane_loop,_digest_loop,_exit,_next){
+    vec_32(16) digest_lane;
+    vec_32(8) digest = [2166136261,2166136261,2166136261,2166136261,
+                        2166136261,2166136261,2166136261,2166136261];
+
+    64_t next_read;
+    64_t next_action = _digest_lane_loop;
+    64_t header_row;
+    64_t mix;
+    32_t l_loop_var; 
+    32_t digest_loop_var;
+    32_t temp;
+    32_t digest_lane_value;
+    32_t digest_index;
+    32_t FNV_OFFSET_BASIS = 2166136261;
+
+    32_t digest_lane_loop = _digest_lane_loop;
+    32_t digest_loop = _digest_loop;
+    
+    32_t next = _next;
+    64_t exit = _exit;
+
+    Org header_row, address;
+
+    Add header_row.32[0],i(1),mix.32[0];
+    Add mix.32[0],i(0),next_read.32[0];
+
+    Disp self_read = 100,sleep=100, self_read_address = next_read,
+        exec_conditional = 100, exec_info = pass, exec_id = next_action;
+
+}
+
+instruction digest_lane_loop(){
+    import digest_step;
+    import prog_pow_mix_row;
+
+ 
+    fnv1aReduce prog_pow_mix_row.row,32,temp,FNV_OFFSET_BASIS;
+    ArrRev digest_lane,l_loop_var,temp;
+
+
+
+    Add l_loop_var,i(1),l_loop_var;
+    Compare l_loop_var, AeqB, i(16),1;
+
+    //go to exit
+    Add digest_loop, i(0), next_action.32[0],1;
+
+    //increment read
+    Add mix.32[0],l_loop_var,next_read.32[0];
+    
+    Disp self_read = -1,sleep = -1, self_read_address = next_read,
+        exec_conditional = 1, exec_info = pass, exec_id = next_action; 
+
+}
+
+instruction digest_loop(){
+    import digest_step;
+
+
+    Mod digest_loop_var,i(8),digest_index;
+    ArrInx digest_lane,digest_loop_var,digest_lane_value;
+    ArrInx digest,digest_index,temp;
+    fnv1a temp,digest_lane_value;
+    ArrRev digest,digest_index,temp;
+
+
+    Add digest_loop_var,i(1),digest_loop_var;
+    Compare digest_loop_var, AeqB, i(16),1;
+
+
+    Disp
+        self_read = 1,sleep = 1, self_read_address = header_row,
+        exec_conditional = 1, exec_info = pass, exec_id = exit; 
+
+}
+
+instruction digest_exit(){
+    import digest_step;
+    import prog_pow_header_info;
+
+    ArrSwap dst_val,digest,8; //move the digest into the data row
+
+    Add next,i(0),next_action.32[0];//goto a new spot
+    
+    Disp
+        self_read = 100,sleep = 100, self_read_address = header_row,
+        write = 100, write_back = 1,
+        exec_conditional = 1, exec_info = copy, exec_id = next_action; 
+
+}
+
+
+instruction final_hash(){
+    import prog_pow_header_info;
+    import progpow_global;
+
+    32_t temp;
+    Add i(0),i(0),temp;
+    keccak_f800 header,seed,dst_val;
+    ArrSwap header,result,8;
+
+    Disp delete = 100, write = 100, write_back = 1;
+
+}
+
+
+instruction main(_target){
+    import g1;
+    64_t my_id;
+    64_t next = _target;
+    Org my_id, id;
+    Add a(my_id.32[0]),i(0),g1.write_spot;
+    
+    Disp exec_conditional = 100, exec_info = copy, exec_id = next;
+}
+instruction nothing(){
+    Disp delete = 100;
+}
+
+
+program progpow{
+    path : "sv",
+    instructions : {
+        "main":{
+            instruction: main,
+            args: ["initalize_progpow_global"]
+        },
+
+
+
+        //prog_pow setup
+        
+        "initalize_progpow_global" : {
+            instruction: initalize_progpow_global,
+            args:["prog_pow_temp_start"] //normal should goto allocate memory progpow setup
+        },
+
+        
+        
+        "allocate_memory_progpow_setup":{
+            instruction:allocate_memory_progpow_setup,
+            args:["make_prog_hash_seed"]
+        },
+        "make_prog_hash_seed":{
+            instruction:make_prog_hash_seed,
+            args:["fill_mix"]
+        },
+
+        //filling_mix
+        "fill_mix":{
+            instruction:fill_mix,
+            args:["fill_mix_iterator","fill_mix_setup","fill_mix_write","fill_mix_exit","prog_pow_loop_setup"]
+        },
+
+        "fill_mix_exit":{
+            instruction: fill_mix_exit
+        },
+        "fill_mix_iterator":{
+            instruction:fill_mix_iterator
+        },
+        "fill_mix_setup":{
+            instruction:fill_mix_setup
+        },
+        "fill_mix_write":{
+            instruction:fill_mix_write
+        },
+        
+        
+
+
+
+
+
+
+        //prog_pow_loops setup
+        "prog_pow_temp_start":{
+            instruction:prog_pow_temp_start,
+            args:["digest_step"]
+        },
+
+        "prog_pow_loop_setup":{
+            instruction:prog_pow_loop_setup,
+            args:["mark_dag_entry_base","mark_dag_entry_end","build_dag_entry", // <- next step
+            "prog_pow_loop_complete","nothing"]// <- step out
+        },
+
+        "prog_pow_loop_complete":{
+            instruction:prog_pow_loop_complete
+        },
+
+        "mark_dag_entry_base":{
+            instruction:mark_dag_entry_base
+        },
+        "mark_dag_entry_end":{
+            instruction:mark_dag_entry_end
+        },
+
+
+
+        "build_dag_entry":{
+            instruction:build_dag_entry,
+            args:["dag_entry_l_loop","calc_addr_lane","dag_entry_i_loop","dag_entry_read_dag_word","dag_entry_write_dag_word","dag_entry_exit","prog_pow_loop"]
+        },
+        "dag_entry_l_loop":{
+            instruction:dag_entry_l_loop
+        },
+        "calc_addr_lane":{
+            instruction:calc_addr_lane
+        },
+        "dag_entry_i_loop":{
+            instruction:dag_entry_i_loop
+        },
+        "dag_entry_read_dag_word":{
+            instruction:dag_entry_read_dag_word
+        },
+
+        "dag_entry_write_dag_word":{
+            instruction:dag_entry_write_dag_word
+        },
+
+        "dag_entry_exit":{
+            instruction:dag_entry_exit
+        },
+
+
+        
+
+       
+
+
+
+
+
+        "prog_pow_loop":{
+            instruction : prog_pow_loop,
+            args:["setup_src_dst_arrs","fill_src_dst",
+                "prog_pow_i_loop",
+                "prog_pow_cache_step","prog_pow_cache_step_setup","prog_pow_cache_l_loop","prog_pow_cache_l_merge","merge_0",
+                "prog_pow_math_step_setup","porg_pow_math_set_sel","prog_pow_math_l_loop","prog_pow_math_l_merge","math_0",
+                "prog_pow_exit","prog_pow_dag_merging"
+                ]
+        },
+
+
+        "setup_src_dst_arrs":{
+            instruction : setup_src_dst_arrs
+        },
+        "fill_src_dst":{
+            instruction : fill_src_dst
+        },
+
+        "prog_pow_i_loop":{//loop over the i 20
+            instruction: prog_pow_i_loop
+        },
+
+        "prog_pow_exit":{
+            instruction:prog_pow_exit
+        },
+
+        "prog_pow_cache_step":{
+            instruction:"prog_pow_cache_step"
+        },
+
+        "prog_pow_cache_step_setup":{//prepare the variable for each time in the l loop
+            instruction: prog_pow_cache_step_setup
+        },
+
+        "prog_pow_cache_l_loop":{//contorl the l loop vars
+            instruction: prog_pow_cache_l_loop
+        },
+        "prog_pow_cache_l_merge":{//launches the multiple merge functions
+            instruction:prog_pow_cache_l_merge
+        },
+
+        "merge_0":{instruction:merge_0},
+        "merge_1":{instruction:merge_1},
+        "merge_2":{instruction:merge_2},
+        "merge_3":{instruction:merge_3},
+
+
+        //prog_pow_math
+
+        "prog_pow_math_step_setup":{
+            instruction:prog_pow_math_step_setup
+        },
+        "porg_pow_math_set_sel":{
+            instruction:porg_pow_math_set_sel
+        },
+        "prog_pow_math_l_loop":{
+            instruction:prog_pow_math_l_loop
+        },
+
+        "math_0":{instruction:math_0},
+        "math_1":{instruction:math_1},
+        "math_2":{instruction:math_2},
+        "math_3":{instruction:math_3},
+        "math_4":{instruction:math_4},
+        "math_5":{instruction:math_5},
+        "math_6":{instruction:math_6},
+        "math_7":{instruction:math_7},
+        "math_8":{instruction:math_8},
+        "math_9":{instruction:math_9},
+        "math_10":{instruction:math_10},
+
+        "prog_pow_math_l_merge":{
+            instruction:prog_pow_math_l_merge
+        },
+
+        //dag merging 
+
+
+        "prog_pow_dag_merging":{
+            instruction:prog_pow_dag_merging,
+            args : ["dag_merging_i_loop","dag_merging_l_loop","dag_merging_calc_index","dag_merging_read_word","dag_merge_0","dag_merging_exit","prog_pow_loop_setup"]
+        },
+        "dag_merging_i_loop":{
+            instruction:dag_merging_i_loop
+        },
+        "dag_merging_exit":{
+            instruction:dag_merging_exit
+        },
+        "dag_merging_l_loop":{
+            instruction:dag_merging_l_loop
+        },
+
+        "dag_merging_calc_index":{
+            instruction:dag_merging_calc_index
+        },
+
+        "dag_merging_read_word":{
+            instruction:dag_merging_read_word
+        },
+
+
+        "dag_merge_0":{instruction:dag_merge_0},
+        "dag_merge_1":{instruction:dag_merge_1},
+        "dag_merge_2":{instruction:dag_merge_2},
+        "dag_merge_3":{instruction:dag_merge_3},
+
+
+        "digest_step":{
+            instruction:digest_step,
+            args:["digest_lane_loop","digest_loop","digest_exit","final_hash"]
+        },
+        "digest_lane_loop":{
+            instruction:digest_lane_loop
+        },
+        "digest_loop":{
+            instruction:digest_loop
+        },
+        "digest_exit":{
+            instruction:digest_exit
+        },
+        
+
+        "final_hash":{
+            instruction:final_hash
+        },
+        
+        //cache_generation
+        /*
+        "gen_seed":{
+            instruction: gen_seed,
+            args : ["start_first_pass_cache"]
+        },
+        "start_first_pass_cache":{
+            instruction:start_first_pass_cache,
+            args:["first_pass_cache"]
+        },
+        "first_pass_cache":{
+            instruction: first_pass_cache,
+            args : ["cache_start"]
+        },
+        "cache_start":{
+            instruction: cache_start,
+            args : ["cache_start","request_first_cache_node","calc_and_request_parent","copy_to_local_request_partner","Xor_and_hash","loop_for_dag"]
+        },
+        "request_first_cache_node":{
+            instruction: request_first_cache_node
+        },
+        "calc_and_request_parent":{
+            instruction:calc_and_request_parent
+        },
+        "copy_to_local_request_partner":{
+            instruction:copy_to_local_request_partner
+        },
+        "Xor_and_hash":{
+            instruction:Xor_and_hash
+        },
+        */
+
+        //dag generation
+        /*
+        "loop_for_dag":{
+            instruction: loop_for_dag,
+            args: ["create_dag_item"]
+        },
+        "create_dag_item":{
+            instruction:create_dag_item,
+            args : ["start_parent_loop","caclulate_parent","mix_parent","write_back_dag_item"]
+        },
+
+        "start_parent_loop":{
+            instruction:start_parent_loop
+        },
+
+        "caclulate_parent":{
+            instruction:caclulate_parent
+        },
+
+        "mix_parent":{
+            instruction:mix_parent
+        },
+
+        "write_back_dag_item":{
+            instruction:write_back_dag_item
+        },
+        */
+
+        "nothing":{
+            instruction:nothing
+        }
+        
+    },
+
+    execute : ["main"],
+    //data_file: "dag_progpow_start.xlsx",
+    //data_file:"post_loop0inner.xlsx",
+    //data_file:"build_dag.xlsx",
+    data_file:"prog_pow_pre_digest.xlsx",
+    data : {
+
+    }
+
+}

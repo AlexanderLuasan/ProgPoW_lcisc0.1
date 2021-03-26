@@ -1,0 +1,6 @@
+[submodule "lcisc_compiler0.1"]
+	path = lcisc_compiler0.1
+	url = /media/alexander/Server/repo/lcisc_compiler0.1/
+[submodule "lcisc_lib0.1"]
+	path = lcisc_lib0.1
+	url = /media/alexander/Server/repo/lcisc_lib0.1/
